@@ -111,14 +111,12 @@
     .app-icon {
       width: 52px;
       height: 52px;
-      background: linear-gradient(135deg, var(--md-sys-color-primary) 0%, #4F378B 100%);
-      color: var(--md-sys-color-on-primary);
+      background: linear-gradient(135deg, #2D3039 0%, #14161C 100%);
       border-radius: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 28px;
-      box-shadow: 0 4px 12px rgba(103, 80, 164, 0.3);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     }
 
     .app-title {
@@ -277,7 +275,9 @@
     <div class="card">
       <div class="app-brand">
         <div class="app-icon">
-          <span class="material-symbols-outlined">code</span>
+          <svg width="32" height="32" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path fill="#DE4C36" d="M251.172 116.594L139.4 4.828c-6.433-6.437-16.873-6.437-23.314 0l-23.21 23.21 29.443 29.443c6.842-2.312 14.688-.761 20.142 4.693 5.48 5.489 7.02 13.402 4.652 20.266l28.375 28.376c6.865-2.365 14.786-.835 20.269 4.657 7.663 7.66 7.663 20.075 0 27.74-7.665 7.666-20.08 7.666-27.749 0-5.764-5.77-7.188-14.235-4.27-21.336l-26.462-26.462-.003 69.637a19.82 19.82 0 0 1 5.188 3.71c7.663 7.66 7.663 20.076 0 27.747-7.665 7.662-20.086 7.662-27.74 0-7.663-7.671-7.663-20.086 0-27.746a19.654 19.654 0 0 1 6.421-4.281V94.196a19.378 19.378 0 0 1-6.421-4.281c-5.806-5.798-7.202-14.317-4.227-21.446L81.47 39.442l-76.64 76.635c-6.44 6.443-6.44 16.884 0 23.322l111.774 111.768c6.435 6.438 16.873 6.438 23.316 0l111.251-111.249c6.438-6.44 6.438-16.887 0-23.324"/>
+          </svg>
         </div>
         <div class="app-title">GitTool Mobile</div>
       </div>
@@ -314,10 +314,14 @@
       const error = urlParams.get('error') || hashParams.get('error');
       const errorDesc = urlParams.get('error_description') || hashParams.get('error_description');
 
-      // Custom App Scheme
-      const appSchemeUrl = code 
-        ? `gittool://callback?code=${encodeURIComponent(code)}${state ? `&state=${encodeURIComponent(state)}` : ''}`
-        : 'gittool://callback';
+      // Custom App Scheme and Direct Android Intent URI targeting com.msi.gittool
+      const queryStr = code ? `code=${encodeURIComponent(code)}${state ? `&state=${encodeURIComponent(state)}` : ''}` : '';
+      const appSchemeUrl = code ? `gittool://callback?${queryStr}` : 'gittool://callback';
+      const androidIntentUrl = code 
+        ? `intent://callback?${queryStr}#Intent;scheme=gittool;package=com.msi.gittool;category=android.intent.category.DEFAULT;category=android.intent.category.BROWSABLE;end;`
+        : appSchemeUrl;
+
+      const launchUrl = androidIntentUrl;
 
       if (code) {
         // SUCCESS SCENARIO
@@ -330,43 +334,38 @@
           </div>
 
           <h1 class="headline">Ready to Return to App</h1>
-          <p class="subtitle">GitHub authorization complete. Click the button below to launch GitTool with your session.</p>
+          <p class="subtitle">GitHub authorization complete. Returning to GitTool automatically.</p>
 
           <div class="code-box">
             <span>Code: <strong>${maskedCode}</strong></span>
             <span class="material-symbols-outlined" style="cursor:pointer; font-size:20px;" id="copy-btn" title="Copy code">content_copy</span>
           </div>
 
-          <a href="${appSchemeUrl}" class="btn-primary" id="redirect-btn">
+          <a href="${launchUrl}" class="btn-primary" id="redirect-btn">
             <span class="material-symbols-outlined">launch</span>
             Redirect to GitTool
           </a>
 
-          <a href="${appSchemeUrl}" class="btn-secondary" style="margin-top: 8px;">
-            <span class="material-symbols-outlined">open_in_new</span>
-            Open App
-          </a>
-
-          <div class="countdown" id="countdown-text">Redirecting automatically in <span id="timer">3</span>s...</div>
+          <div class="countdown" id="countdown-text">Redirecting automatically in <span id="timer">2</span>s...</div>
         `;
 
         document.getElementById('copy-btn').addEventListener('click', () => {
           navigator.clipboard.writeText(code).then(() => showToast('OAuth code copied to clipboard!'));
         });
 
-        // Trigger redirect
-        let seconds = 3;
+        // Trigger automatic redirect
+        let seconds = 2;
         const timerEl = document.getElementById('timer');
         const interval = setInterval(() => {
           seconds--;
           if (timerEl) timerEl.textContent = seconds;
           if (seconds <= 0) {
             clearInterval(interval);
-            window.location.href = appSchemeUrl;
+            window.location.href = launchUrl;
           }
         }, 1000);
 
-        // Immediate click override
+        // Immediate click redirect
         document.getElementById('redirect-btn').addEventListener('click', (e) => {
           clearInterval(interval);
         });
@@ -382,7 +381,7 @@
           <h1 class="headline">Login Attempt Failed</h1>
           <p class="subtitle">${errorDesc || 'GitHub OAuth login was cancelled or encountered an error.'}</p>
 
-          <a href="${appSchemeUrl}" class="btn-primary">
+          <a href="${launchUrl}" class="btn-primary">
             <span class="material-symbols-outlined">arrow_back</span>
             Return to GitTool App
           </a>
@@ -396,9 +395,9 @@
           </div>
 
           <h1 class="headline">GitTool OAuth Redirect Handler</h1>
-          <p class="subtitle">This page receives authorization callbacks from GitHub and safely forwards credentials to the GitTool Android application.</p>
+          <p class="subtitle">This page receives authorization callbacks from GitHub and safely forwards credentials directly to the GitTool application.</p>
 
-          <a href="${appSchemeUrl}" class="btn-primary">
+          <a href="${launchUrl}" class="btn-primary">
             <span class="material-symbols-outlined">phonelink</span>
             Launch GitTool App
           </a>

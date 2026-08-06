@@ -31,13 +31,18 @@
             </intent-filter>
 
             <!-- Custom Scheme redirect for GitHub OAuth -->
-            <intent-filter android:label="GitHub OAuth Redirect">
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="gittool" android:host="callback" />
             </intent-filter>
         </activity>
+
+        <!-- Disable AppAuth duplicate receiver so only MainActivity handles gittool:// scheme -->
+        <activity
+            android:name="net.openid.appauth.RedirectUriReceiverActivity"
+            tools:node="remove" />
 
         <service
             android:name=".ui.upload.UploadService"
