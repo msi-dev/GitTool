@@ -1,0 +1,5 @@
+# ninja log v5
+0	2216	1785823017263450178	CMakeFiles/gittool_security.dir/native-lib.cpp.o	aeb33faff279988d
+2219	2330	1785823017358714161	/app/applet/app/build/intermediates/cxx/Debug/356g3lr4/obj/x86/libgittool_security.so	9b0335e88e8853a3
+56	2747	1785824035972406708	CMakeFiles/gittool_security.dir/native-lib.cpp.o	aeb33faff279988d
+2747	2882	1785824036151012385	/app/applet/app/build/intermediates/cxx/Debug/356g3lr4/obj/x86/libgittool_security.so	9b0335e88e8853a3

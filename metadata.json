@@ -1,0 +1,6 @@
+{
+  "name": "GitTool",
+  "description": "An expert companion for managing and uploading mobile and backend projects directly to GitHub with clean Material 3 design.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

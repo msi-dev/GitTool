@@ -1,0 +1,38 @@
+{
+  "buildFiles": [
+    "/app/applet/app/src/main/cpp/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/opt/android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/app/applet/app/.cxx/Debug/356g3lr4/x86_64",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/opt/android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/app/applet/app/.cxx/Debug/356g3lr4/x86_64",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "gittool_security::@6890427a1f51a3e7e1df": {
+      "toolchain": "toolchain",
+      "abi": "x86_64",
+      "artifactName": "gittool_security",
+      "output": "/app/applet/app/build/intermediates/cxx/Debug/356g3lr4/obj/x86_64/libgittool_security.so",
+      "runtimeFiles": []
+    }
+  },
+  "toolchains": {
+    "toolchain": {
+      "cCompilerExecutable": "/opt/android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/clang.lld",
+      "cppCompilerExecutable": "/opt/android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++.lld"
+    }
+  },
+  "cFileExtensions": [],
+  "cppFileExtensions": [
+    "cpp"
+  ]
+}
