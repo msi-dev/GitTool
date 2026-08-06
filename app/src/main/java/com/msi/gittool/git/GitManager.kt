@@ -290,37 +290,46 @@ class GitManager {
                             pushSuccessful = true
                         }
                         RemoteRefUpdate.Status.REJECTED_NONFASTFORWARD -> {
-                            // Try fetch & rebase
-                            onProgress("Rebasing remote changes...", 70, "Remote branch has commits. Fetching & rebasing...")
+                            // Try fetch & rebase, or force push fallback
+                            onProgress("Rebasing remote changes...", 70, "Remote branch has commits. Fetching & updating...")
+                            var rebaseOk = false
                             try {
                                 git.fetch()
                                     .setRemote("origin")
                                     .setCredentialsProvider(credentialsProvider)
                                     .call()
 
-                                git.rebase()
+                                val rebaseRes = git.rebase()
                                     .setUpstream("origin/$branchName")
                                     .call()
+                                rebaseOk = rebaseRes.status.isSuccessful
+                            } catch (_: Exception) {
+                                rebaseOk = false
+                            }
 
-                                // Retry push after rebase
-                                val retryResults = git.push()
-                                    .setRemote("origin")
-                                    .setRefSpecs(refSpec)
-                                    .setCredentialsProvider(credentialsProvider)
-                                    .setProgressMonitor(monitor)
-                                    .call()
+                            val retryPush = git.push()
+                                .setRemote("origin")
+                                .setRefSpecs(refSpec)
+                                .setCredentialsProvider(credentialsProvider)
+                                .setProgressMonitor(monitor)
 
+                            if (!rebaseOk) {
+                                retryPush.setForce(true)
+                            }
+
+                            try {
+                                val retryResults = retryPush.call()
                                 retryResults.forEach { rr ->
                                     rr.getRemoteUpdates().forEach { u ->
                                         if (u.getStatus() == RemoteRefUpdate.Status.OK || u.getStatus() == RemoteRefUpdate.Status.UP_TO_DATE) {
                                             pushSuccessful = true
                                         } else {
-                                            pushErrorMessage = "Push rejected after rebase: ${u.getStatus()}"
+                                            pushErrorMessage = "Push rejected after retry: ${u.getStatus()} - ${u.getMessage() ?: ""}"
                                         }
                                     }
                                 }
-                            } catch (e: Exception) {
-                                pushErrorMessage = "Push rejected. The remote has changes that could not be automatically rebased: ${e.message}"
+                            } catch (retryEx: Exception) {
+                                pushErrorMessage = "Push rejected: ${retryEx.message}"
                             }
                         }
                         RemoteRefUpdate.Status.REJECTED_NODELETE -> pushErrorMessage = "Push rejected: Cannot delete remote ref."

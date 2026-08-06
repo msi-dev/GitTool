@@ -118,6 +118,7 @@ class RepoRepository(
 
     suspend fun clearAllActivityLogs() = withContext(Dispatchers.IO) {
         gitToolDao.clearAllActivityLogs()
+        tokenManager.setHasSeededInitialLogs(true)
     }
 
     suspend fun markAllActivityLogsAsRead() = withContext(Dispatchers.IO) {
@@ -125,72 +126,35 @@ class RepoRepository(
     }
 
     suspend fun seedInitialActivityLogsIfEmpty() = withContext(Dispatchers.IO) {
-        val currentLogs = gitToolDao.getActivityLogs()
-        if (currentLogs.isEmpty()) {
-            val now = System.currentTimeMillis()
-            val sampleLogs = listOf(
-                com.msi.gittool.data.local.db.ActivityLogEntity(
-                    type = "UPLOAD",
-                    title = "Pushed Commit to GitHub",
-                    message = "Successfully uploaded 42 project files to repository via JGit engine.",
-                    details = "Commit Hash: a8f912c4b790d\nBranch: main\nFiles: 42 files pushed\nSpeed: 1.2 MB/s\nStatus: 200 OK",
-                    status = "SUCCESS",
-                    timestamp = now - 1000 * 60 * 15,
-                    repoName = "gittool-android-app",
-                    isRead = false
-                ),
-                com.msi.gittool.data.local.db.ActivityLogEntity(
-                    type = "IMPORT",
-                    title = "Imported Local Zip Archive",
-                    message = "Imported repository template 'android-git-tools' from local directory.",
-                    details = "Source path: /storage/emulated/0/Download/android-git-tools.zip\nExtracted: 18 directory trees, 124 source code files.",
-                    status = "SUCCESS",
-                    timestamp = now - 1000 * 60 * 45,
-                    repoName = "android-git-tools",
-                    isRead = false
-                ),
-                com.msi.gittool.data.local.db.ActivityLogEntity(
-                    type = "FORK",
-                    title = "Forked Remote Repository",
-                    message = "Successfully created fork of 'torvalds/linux' in user workspace.",
-                    details = "Parent Repo: torvalds/linux\nForked Target: user/linux\nDefault Branch: master\nClone URL: https://github.com/user/linux.git",
-                    status = "SUCCESS",
-                    timestamp = now - 1000 * 60 * 120,
-                    repoName = "torvalds/linux",
-                    isRead = true
-                ),
-                com.msi.gittool.data.local.db.ActivityLogEntity(
-                    type = "DOWNLOAD",
-                    title = "Downloaded Source Zip",
-                    message = "Saved repository ZIP bundle for 'JetpackCompose-Sample' to device downloads.",
-                    details = "File Name: JetpackCompose-Sample-main.zip\nSize: 4.8 MB\nDestination: Downloads/GitTool/",
-                    status = "SUCCESS",
-                    timestamp = now - 1000 * 60 * 240,
-                    repoName = "JetpackCompose-Sample",
-                    isRead = true
-                ),
-                com.msi.gittool.data.local.db.ActivityLogEntity(
-                    type = "DELETE",
-                    title = "Deleted Local Repository Cache",
-                    message = "Cleared offline workspace cache and temporary files for 'deprecated-repo-v1'.",
-                    details = "Directory /cache/jgit_workspace/deprecated-repo-v1 clean removed.\nFreed space: 12.4 MB",
-                    status = "WARNING",
-                    timestamp = now - 1000 * 60 * 360,
-                    repoName = "deprecated-repo-v1",
-                    isRead = true
-                ),
-                com.msi.gittool.data.local.db.ActivityLogEntity(
-                    type = "FAILED",
-                    title = "Push Conflict Rejected",
-                    message = "Failed to push to origin/main due to non-fast-forward remote commits.",
-                    details = "Error: REJECTED_NONFASTFORWARD\nCause: Remote branch contains 2 commits not present locally.\nResolution: Automatic rebase will be initiated.",
-                    status = "FAILED",
-                    timestamp = now - 1000 * 60 * 480,
-                    repoName = "team-collaboration-app",
-                    isRead = false
+        if (!tokenManager.hasSeededInitialLogs()) {
+            val currentLogs = gitToolDao.getActivityLogs()
+            if (currentLogs.isEmpty()) {
+                val now = System.currentTimeMillis()
+                val sampleLogs = listOf(
+                    com.msi.gittool.data.local.db.ActivityLogEntity(
+                        type = "UPLOAD",
+                        title = "Pushed Commit to GitHub",
+                        message = "Successfully uploaded 42 project files to repository via JGit engine.",
+                        details = "Commit Hash: a8f912c4b790d\nBranch: main\nFiles: 42 files pushed\nSpeed: 1.2 MB/s\nStatus: 200 OK",
+                        status = "SUCCESS",
+                        timestamp = now - 1000 * 60 * 15,
+                        repoName = "gittool-android-app",
+                        isRead = false
+                    ),
+                    com.msi.gittool.data.local.db.ActivityLogEntity(
+                        type = "IMPORT",
+                        title = "Imported Local Zip Archive",
+                        message = "Imported repository template 'android-git-tools' from local directory.",
+                        details = "Source path: /storage/emulated/0/Download/android-git-tools.zip\nExtracted: 18 directory trees, 124 source code files.",
+                        status = "SUCCESS",
+                        timestamp = now - 1000 * 60 * 45,
+                        repoName = "android-git-tools",
+                        isRead = false
+                    )
                 )
-            )
-            sampleLogs.forEach { gitToolDao.insertActivityLog(it) }
+                sampleLogs.forEach { gitToolDao.insertActivityLog(it) }
+            }
+            tokenManager.setHasSeededInitialLogs(true)
         }
     }
 
@@ -659,8 +623,24 @@ class RepoRepository(
     suspend fun createFork(owner: String, repo: String): Result<GitHubRepo> = withContext(Dispatchers.IO) {
         try {
             val res = apiService.createFork(owner, repo)
+            logActivity(
+                type = "FORK",
+                title = "Forked Repository",
+                message = "Forked '$owner/$repo' to your workspace.",
+                details = "Owner: $owner\nRepo: $repo\nURL: ${res.html_url}",
+                status = "SUCCESS",
+                repoName = res.full_name
+            )
             Result.success(res)
         } catch (e: Exception) {
+            logActivity(
+                type = "FORK",
+                title = "Fork Failed",
+                message = "Could not fork '$owner/$repo' - ${e.message}",
+                details = "Error: ${e.message}",
+                status = "FAILED",
+                repoName = "$owner/$repo"
+            )
             Result.failure(e)
         }
     }
@@ -860,6 +840,14 @@ class RepoRepository(
                         "Saved $fileName to your device Downloads folder.",
                         fileName.hashCode(),
                         fileName
+                    )
+                    logActivity(
+                        type = "DOWNLOAD",
+                        title = "Downloaded Source Zip",
+                        message = "Saved repository ZIP bundle '$fileName' to Downloads.",
+                        details = "File Name: $fileName\nDestination: Downloads/GitTool/",
+                        status = "SUCCESS",
+                        repoName = "$owner/$repo"
                     )
                 } else {
                     NotificationHelper.showNotification(

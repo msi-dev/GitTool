@@ -35,7 +35,15 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="gittool" android:host="callback" />
+                <data android:scheme="gittool" />
+            </intent-filter>
+
+            <!-- Optional HTTPS web link redirect support -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="gittool.app" />
             </intent-filter>
         </activity>
 

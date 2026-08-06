@@ -15,6 +15,12 @@ interface GitHubApiService {
         @Query("sort") sort: String = "updated"
     ): List<GitHubRepo>
 
+    @GET("repos/{owner}/{repo}")
+    suspend fun getRepo(
+        @Path("owner") owner: String,
+        @Path("repo") repo: String
+    ): GitHubRepo
+
     @POST("user/repos")
     suspend fun createRepo(
         @Body request: CreateRepoRequest

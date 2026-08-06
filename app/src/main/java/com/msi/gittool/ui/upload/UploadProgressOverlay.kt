@@ -14,6 +14,9 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -96,10 +99,11 @@ fun UploadProgressOverlay(
                     is UploadState.Uploading -> {
                         val animatedProgress by animateFloatAsState(
                             targetValue = state.progress,
-                            animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+                            animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
                             label = "upload_progress_anim"
                         )
                         val percentInt = (state.progress * 100).toInt()
+                        val isPaused = state.isPaused
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -113,16 +117,33 @@ fun UploadProgressOverlay(
                                 Icon(
                                     imageVector = Icons.Default.CloudUpload,
                                     contentDescription = "Uploading",
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = if (isPaused) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(24.dp)
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Column {
-                                    Text(
-                                        text = "Pushing to GitHub Repository",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = if (isPaused) "Upload Paused" else "Pushing to GitHub",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        if (isPaused) {
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Surface(
+                                                color = MaterialTheme.colorScheme.errorContainer,
+                                                shape = RoundedCornerShape(4.dp)
+                                            ) {
+                                                Text(
+                                                    text = "PAUSED",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                )
+                                            }
+                                        }
+                                    }
                                     Text(
                                         text = state.stage,
                                         style = MaterialTheme.typography.bodySmall,
@@ -133,13 +154,41 @@ fun UploadProgressOverlay(
                                 }
                             }
 
-                            Text(
-                                text = "$percentInt%",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "$percentInt%",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isPaused) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(end = 6.dp)
+                                )
+
+                                // Pause / Resume Toggle Icon Button
+                                IconButton(
+                                    onClick = { UploadService.togglePauseResume() },
+                                    modifier = Modifier.size(32.dp).testTag("overlay_pause_resume_btn")
+                                ) {
+                                    Icon(
+                                        imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                        contentDescription = if (isPaused) "Resume upload" else "Pause upload",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+
+                                // Hide Overlay Icon Button (keeps background service running)
+                                IconButton(
+                                    onClick = { isDismissed = true },
+                                    modifier = Modifier.size(32.dp).testTag("overlay_hide_btn")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.VisibilityOff,
+                                        contentDescription = "Hide progress overlay",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(10.dp))

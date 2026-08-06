@@ -119,16 +119,77 @@ class UploadRepository(
             return@withContext Result.success(newRepo)
         }
         try {
+            // 1. Check if user already has a repository with this name on GitHub
+            var currentUserLogin: String? = null
+            try {
+                val currentUser = apiService.getCurrentUser()
+                currentUserLogin = currentUser.login
+                val existingRepo = apiService.getRepo(currentUser.login, name)
+                // Repository exists! Return existing repo to attach as origin remote and push into
+                return@withContext Result.success(existingRepo)
+            } catch (_: Exception) {
+                // Not found (404) or couldn't fetch existing -> proceed to create new repo
+            }
+
+            // 2. Repository does not exist -> Create new repository
             val response = apiService.createRepo(
                 CreateRepoRequest(
                     name = name,
                     description = description,
                     private = private,
-                    auto_init = true // Guarantee branch 'main' exists
+                    auto_init = false // Empty repo so JGit can push main branch directly
                 )
             )
             Result.success(response)
         } catch (e: Exception) {
+            val is422OrAlreadyExists = if (e is retrofit2.HttpException) {
+                val code = e.code()
+                code == 422 || code == 409 || code == 400
+            } else {
+                val msg = e.message ?: ""
+                msg.contains("422") || msg.contains("already exists", ignoreCase = true)
+            }
+
+            if (is422OrAlreadyExists) {
+                try {
+                    val user = apiService.getCurrentUser()
+                    val username = user.login
+                    val existingRepo = try {
+                        apiService.getRepo(username, name)
+                    } catch (_: Exception) {
+                        GitHubRepo(
+                            id = System.currentTimeMillis(),
+                            name = name,
+                            full_name = "$username/$name",
+                            private = private,
+                            html_url = "https://github.com/$username/$name",
+                            description = description,
+                            stargazers_count = 0,
+                            forks_count = 0,
+                            language = "Kotlin",
+                            clone_url = "https://github.com/$username/$name.git"
+                        )
+                    }
+                    return@withContext Result.success(existingRepo)
+                } catch (_: Exception) {
+                    val fallbackUser = tokenManager.getUsername() ?: com.msi.gittool.git.SecureTokenManager(context).getUsername() ?: ""
+                    if (fallbackUser.isNotEmpty()) {
+                        val existingRepo = GitHubRepo(
+                            id = System.currentTimeMillis(),
+                            name = name,
+                            full_name = "$fallbackUser/$name",
+                            private = private,
+                            html_url = "https://github.com/$fallbackUser/$name",
+                            description = description,
+                            stargazers_count = 0,
+                            forks_count = 0,
+                            language = "Kotlin",
+                            clone_url = "https://github.com/$fallbackUser/$name.git"
+                        )
+                        return@withContext Result.success(existingRepo)
+                    }
+                }
+            }
             Result.failure(e)
         }
     }

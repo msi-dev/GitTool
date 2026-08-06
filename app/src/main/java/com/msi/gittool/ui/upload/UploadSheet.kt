@@ -31,6 +31,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.VisibilityOff
+
 private fun formatFileSize(bytes: Long): String {
     if (bytes <= 0) return "0 B"
     if (bytes < 1024) return "$bytes B"
@@ -111,15 +115,26 @@ fun UploadSheet(
             )
 
             // Dynamic flow layout based on service state
+            val stateKey = remember(progressState) {
+                when (progressState) {
+                    is UploadState.Idle -> "Idle"
+                    is UploadState.Loading -> "Loading"
+                    is UploadState.Uploading -> "Uploading"
+                    is UploadState.Success -> "Success"
+                    is UploadState.Error -> "Error"
+                }
+            }
+
             AnimatedContent(
-                targetState = progressState,
+                targetState = stateKey,
                 transitionSpec = {
                     fadeIn() togetherWith fadeOut()
                 },
                 label = "Form uploading status sheets"
-            ) { targetState ->
-                when (targetState) {
-                    is UploadState.Loading -> {
+            ) { key ->
+                when (key) {
+                    "Loading" -> {
+                        val loadingState = progressState as? UploadState.Loading
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
@@ -130,7 +145,7 @@ fun UploadSheet(
                             CircularProgressIndicator(modifier = Modifier.size(48.dp))
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = targetState.message,
+                                text = loadingState?.message ?: "Preparing upload...",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center
@@ -138,63 +153,133 @@ fun UploadSheet(
                         }
                     }
 
-                    is UploadState.Uploading -> {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 24.dp)
-                        ) {
-                            LinearProgressIndicator(
-                                progress = { targetState.progress },
-                                color = MaterialTheme.colorScheme.primary,
-                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    "Uploading" -> {
+                        val uploadingState = progressState as? UploadState.Uploading
+                        if (uploadingState != null) {
+                            val isPaused = uploadingState.isPaused
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(8.dp)
-                                    .testTag("upload_linear_progress")
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "${(targetState.progress * 100).toInt()}% Completed",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "${targetState.stage} (${targetState.uploadedCount}/${targetState.totalCount} files)",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                            
-                            val speedStr = if (targetState.uploadSpeedBytesPerSec > 0) {
-                                val mbSec = targetState.uploadSpeedBytesPerSec / (1024.0 * 1024.0)
-                                if (mbSec >= 1.0) String.format(java.util.Locale.US, "%.1f MB/s", mbSec)
-                                else String.format(java.util.Locale.US, "%.0f KB/s", targetState.uploadSpeedBytesPerSec / 1024.0)
-                            } else null
+                                    .padding(vertical = 16.dp)
+                            ) {
+                                LinearProgressIndicator(
+                                    progress = { uploadingState.progress },
+                                    color = if (isPaused) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary,
+                                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp)
+                                        .testTag("upload_linear_progress")
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = "${(uploadingState.progress * 100).toInt()}% Completed",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isPaused) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary
+                                    )
+                                    if (isPaused) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.errorContainer,
+                                            shape = RoundedCornerShape(4.dp)
+                                        ) {
+                                            Text(
+                                                text = "PAUSED",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                }
 
-                            val etaStr = if (targetState.estimatedRemainingSeconds != null && targetState.estimatedRemainingSeconds > 0) {
-                                if (targetState.estimatedRemainingSeconds >= 60) "~${targetState.estimatedRemainingSeconds / 60}m remaining"
-                                else "~${targetState.estimatedRemainingSeconds}s remaining"
-                            } else null
-
-                            val speedAndEta = listOfNotNull(speedStr, etaStr).joinToString(" • ")
-                            if (speedAndEta.isNotEmpty()) {
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = speedAndEta,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.secondary
+                                    text = "${uploadingState.stage} (${uploadingState.uploadedCount}/${uploadingState.totalCount} files)",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                                
+                                val speedStr = if (uploadingState.uploadSpeedBytesPerSec > 0 && !isPaused) {
+                                    val mbSec = uploadingState.uploadSpeedBytesPerSec / (1024.0 * 1024.0)
+                                    if (mbSec >= 1.0) String.format(java.util.Locale.US, "%.1f MB/s", mbSec)
+                                    else String.format(java.util.Locale.US, "%.0f KB/s", uploadingState.uploadSpeedBytesPerSec / 1024.0)
+                                } else null
+
+                                val etaStr = if (uploadingState.estimatedRemainingSeconds != null && uploadingState.estimatedRemainingSeconds > 0 && !isPaused) {
+                                    if (uploadingState.estimatedRemainingSeconds >= 60) "~${uploadingState.estimatedRemainingSeconds / 60}m remaining"
+                                    else "~${uploadingState.estimatedRemainingSeconds}s remaining"
+                                } else null
+
+                                val speedAndEta = listOfNotNull(speedStr, etaStr).joinToString(" • ")
+                                if (speedAndEta.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = speedAndEta,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.secondary
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(20.dp))
+
+                                // Pause / Resume & Hide Actions Row
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { UploadService.togglePauseResume() },
+                                        modifier = Modifier.weight(1f).testTag("upload_sheet_pause_resume_btn")
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                            contentDescription = if (isPaused) "Resume Upload" else "Pause Upload"
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(if (isPaused) "Resume" else "Pause")
+                                    }
+
+                                    Button(
+                                        onClick = { onDismissRequest() },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            contentColor = MaterialTheme.colorScheme.onSurface
+                                        ),
+                                        modifier = Modifier.weight(1f).testTag("upload_sheet_hide_btn")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.VisibilityOff,
+                                            contentDescription = "Hide Progress Sheet"
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Hide Sheet")
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Upload will continue in the background notification channel.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
                                 )
                             }
                         }
                     }
 
-                    is UploadState.Error -> {
+                    "Error" -> {
+                        val errorState = progressState as? UploadState.Error
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
@@ -217,7 +302,7 @@ fun UploadSheet(
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text(
-                                        text = targetState.message,
+                                        text = errorState?.message ?: "An upload error occurred.",
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onErrorContainer
                                     )

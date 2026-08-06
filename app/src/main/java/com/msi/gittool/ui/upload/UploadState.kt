@@ -11,7 +11,8 @@ sealed interface UploadState {
         val uploadedBytes: Long = 0L,
         val totalBytes: Long = 0L,
         val uploadSpeedBytesPerSec: Long = 0L,
-        val estimatedRemainingSeconds: Long? = null
+        val estimatedRemainingSeconds: Long? = null,
+        val isPaused: Boolean = false
     ) : UploadState
     data class Success(val repoUrl: String) : UploadState
     data class Error(val message: String) : UploadState

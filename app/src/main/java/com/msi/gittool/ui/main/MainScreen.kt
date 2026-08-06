@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.msi.gittool.data.remote.GitHubRepo
 import com.msi.gittool.ui.components.DashboardStatsOverview
+import com.msi.gittool.ui.components.InAppNotificationToast
+import com.msi.gittool.ui.components.InAppToastManager
 import com.msi.gittool.ui.components.RepoItem
 import com.msi.gittool.ui.components.RepoSkeletonList
 import com.msi.gittool.ui.components.TopBarWithMenu
@@ -520,6 +522,13 @@ fun MainScreen(
             UploadProgressOverlay(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .padding(bottom = 60.dp)
+            )
+
+            // In-App Notification Toast directly above bottom navigation bar
+            InAppNotificationToast(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
                     .padding(bottom = 8.dp)
             )
 
@@ -748,10 +757,10 @@ fun MainScreen(
                             showForkDialog = false
                             val parts = input.split("/")
                             repoViewModel.forkRepo(parts[0], parts[1], context) { success, msg ->
-                                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                InAppToastManager.showToast(msg, isError = !success)
                             }
                         } else {
-                            Toast.makeText(context, "Enter correct format: owner/repo_name", Toast.LENGTH_SHORT).show()
+                            InAppToastManager.showToast("Enter correct format: owner/repo_name", isError = true)
                         }
                     },
                     modifier = Modifier.testTag("repo_fork_confirm_btn")
@@ -797,10 +806,10 @@ fun MainScreen(
                         if (url.startsWith("http://") || url.startsWith("https://")) {
                             showImportDialog = false
                             repoViewModel.importExternalRepo(url, context) { success, msg ->
-                                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                InAppToastManager.showToast(msg, isError = !success)
                             }
                         } else {
-                            Toast.makeText(context, "Please enter valid clone http link.", Toast.LENGTH_SHORT).show()
+                            InAppToastManager.showToast("Please enter valid clone http link.", isError = true)
                         }
                     },
                     modifier = Modifier.testTag("repo_import_confirm_btn")

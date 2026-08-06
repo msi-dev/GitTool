@@ -35,6 +35,15 @@ class TokenManager(context: Context) {
         private const val KEY_OAUTH_CLIENT_SECRET = "github_oauth_client_secret"
         private const val KEY_OAUTH_REDIRECT_URI = "github_oauth_redirect_uri"
         private const val KEY_IS_MOCK_LOGIN = "github_is_mock_login"
+        private const val KEY_HAS_SEEDED_INITIAL_LOGS = "has_seeded_initial_logs"
+    }
+
+    fun setHasSeededInitialLogs(seeded: Boolean) {
+        sharedPrefs.edit().putBoolean(KEY_HAS_SEEDED_INITIAL_LOGS, seeded).apply()
+    }
+
+    fun hasSeededInitialLogs(): Boolean {
+        return sharedPrefs.getBoolean(KEY_HAS_SEEDED_INITIAL_LOGS, false)
     }
 
     fun saveIsMockLogin(isMock: Boolean) {

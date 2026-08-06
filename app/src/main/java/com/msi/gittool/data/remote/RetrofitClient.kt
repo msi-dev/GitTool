@@ -27,7 +27,9 @@ object RetrofitClient {
             if (isGitHubHost) {
                 val token = tokenManager.getAccessToken()
                 if (!token.isNullOrEmpty()) {
-                    val authHeader = if (token.startsWith("ghp_") || token.startsWith("gho_")) {
+                    val authHeader = if (token.startsWith("token ") || token.startsWith("Bearer ")) {
+                        token
+                    } else if (token.startsWith("ghp_") || token.startsWith("gho_")) {
                         "token $token"
                     } else {
                         "Bearer $token"

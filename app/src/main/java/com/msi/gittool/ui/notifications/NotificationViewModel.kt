@@ -53,7 +53,6 @@ class NotificationViewModel(
     fun refreshLogs() {
         _uiState.update { it.copy(isRefreshing = true) }
         viewModelScope.launch {
-            repoRepository.seedInitialActivityLogsIfEmpty()
             _uiState.update { it.copy(isRefreshing = false) }
         }
     }
