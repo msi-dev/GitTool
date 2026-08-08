@@ -3,6 +3,7 @@ package com.msi.gittool
 import android.app.Application
 import android.os.Process
 import android.util.Log
+import com.msi.gittool.analytics.OAuthCrashReporter
 import com.msi.gittool.di.AppContainer
 import com.msi.gittool.di.DefaultAppContainer
 import com.msi.gittool.security.IntegrityChecker
@@ -21,6 +22,7 @@ class GitToolApplication : Application() {
         // Initialize the app container first to ensure the app UI and MainActivity are fully supported
         try {
             container = DefaultAppContainer(this)
+            OAuthCrashReporter.initialize(container.repoRepository)
         } catch (e: Throwable) {
             Log.e("GitToolApp", "Failed to initialize DefaultAppContainer", e)
         }

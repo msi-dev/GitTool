@@ -185,4 +185,17 @@ data class GitHubRelease(
     val html_url: String?
 )
 
+@JsonClass(generateAdapter = true)
+data class UpdateFileRequest(
+    val message: String,
+    val content: String,
+    val sha: String? = null,
+    val branch: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class UpdateFileResponse(
+    val content: GitHubFileContentResponse?
+)
+
 

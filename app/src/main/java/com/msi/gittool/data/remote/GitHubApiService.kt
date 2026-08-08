@@ -105,6 +105,14 @@ interface GitHubApiService {
         @Path("path") path: String
     ): GitHubFileContentResponse
 
+    @PUT("repos/{owner}/{repo}/contents/{path}")
+    suspend fun updateRepoFileContent(
+        @Path("owner") owner: String,
+        @Path("repo") repo: String,
+        @Path("path") path: String,
+        @Body body: UpdateFileRequest
+    ): UpdateFileResponse
+
     @GET("repos/{owner}/{repo}/languages")
     suspend fun getRepoLanguages(
         @Path("owner") owner: String,

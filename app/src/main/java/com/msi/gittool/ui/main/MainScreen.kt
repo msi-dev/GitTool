@@ -48,6 +48,7 @@ import com.msi.gittool.ui.components.RepoItem
 import com.msi.gittool.ui.components.RepoSkeletonList
 import com.msi.gittool.ui.components.TopBarWithMenu
 import com.msi.gittool.ui.theme.ThemeViewModel
+import com.msi.gittool.util.GitHubUrlParser
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import com.msi.gittool.ui.upload.UploadProgressOverlay
@@ -729,13 +730,25 @@ fun MainScreen(
 
     // Dialog for Repository forks
     if (showForkDialog) {
+        val parsedFork = GitHubUrlParser.parse(forkRepoNameInput)
         AlertDialog(
             onDismissRequest = { showForkDialog = false },
-            title = { Text("Fork Repository", fontWeight = FontWeight.Bold) },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.ForkRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Fork Repository by Link", fontWeight = FontWeight.Bold)
+                }
+            },
             text = {
                 Column {
                     Text(
-                        text = "Forks copy upstream repository structures under your current GitTool authorization.",
+                        text = "Enter or paste any GitHub repository link (e.g. https://github.com/msi-dev/Music.git). GitTool will locate the project on GitHub and automatically create a fork under your account.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 12.dp)
@@ -743,29 +756,115 @@ fun MainScreen(
                     OutlinedTextField(
                         value = forkRepoNameInput,
                         onValueChange = { forkRepoNameInput = it },
-                        placeholder = { Text("owner/repo (e.g. google/gson)") },
+                        label = { Text("GitHub Repository Link or Owner/Repo") },
+                        placeholder = { Text("https://github.com/msi-dev/Music.git") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Link, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        },
+                        trailingIcon = {
+                            if (forkRepoNameInput.isNotEmpty()) {
+                                IconButton(onClick = { forkRepoNameInput = "" }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Clear text")
+                                }
+                            }
+                        },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth().testTag("repo_fork_input")
                     )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    if (parsedFork != null) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = "Target Repository: ${parsedFork.fullName}",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    Text(
+                                        text = parsedFork.httpsUrl,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                    )
+                                }
+                            }
+                        }
+                    } else if (forkRepoNameInput.trim().isNotEmpty()) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ErrorOutline,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Invalid link format. Enter link like https://github.com/msi-dev/Music.git",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(
+                        onClick = { forkRepoNameInput = "https://github.com/msi-dev/Music.git" },
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Text(
+                            text = "Fill example: https://github.com/msi-dev/Music.git",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        val input = forkRepoNameInput.trim()
-                        if (input.contains("/") && input.split("/").size >= 2) {
+                        val parsed = GitHubUrlParser.parse(forkRepoNameInput)
+                        if (parsed != null) {
                             showForkDialog = false
-                            val parts = input.split("/")
-                            repoViewModel.forkRepo(parts[0], parts[1], context) { success, msg ->
+                            repoViewModel.forkRepo(parsed.owner, parsed.repoName, context) { success, msg ->
                                 InAppToastManager.showToast(msg, isError = !success)
                             }
                         } else {
-                            InAppToastManager.showToast("Enter correct format: owner/repo_name", isError = true)
+                            InAppToastManager.showToast(
+                                "Invalid GitHub link. Example: https://github.com/msi-dev/Music.git",
+                                isError = true
+                            )
                         }
                     },
+                    enabled = parsedFork != null,
                     modifier = Modifier.testTag("repo_fork_confirm_btn")
                 ) {
-                    Text("Fork")
+                    Text("Fork to Account")
                 }
             },
             dismissButton = {
@@ -773,19 +872,31 @@ fun MainScreen(
                     Text("Cancel")
                 }
             },
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(20.dp)
         )
     }
 
     // Dialog for Repository Import actions
     if (showImportDialog) {
+        val parsedImport = GitHubUrlParser.parse(importUrlInput)
         AlertDialog(
             onDismissRequest = { showImportDialog = false },
-            title = { Text("Import Remote Git Repo", fontWeight = FontWeight.Bold) },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.CloudDownload,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Import Repository by Link", fontWeight = FontWeight.Bold)
+                }
+            },
             text = {
                 Column {
                     Text(
-                        text = "Supports importing projects from HTTP Git clone locations. GitHub links will be automatically forked.",
+                        text = "Enter or paste any GitHub project link (e.g. https://github.com/msi-dev/Music.git). GitTool will locate the repository on GitHub and import it directly into your account.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 12.dp)
@@ -793,28 +904,115 @@ fun MainScreen(
                     OutlinedTextField(
                         value = importUrlInput,
                         onValueChange = { importUrlInput = it },
-                        placeholder = { Text("Git Clone Link (https://github.com/...)") },
+                        label = { Text("GitHub Repository Link") },
+                        placeholder = { Text("https://github.com/msi-dev/Music.git") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Link, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        },
+                        trailingIcon = {
+                            if (importUrlInput.isNotEmpty()) {
+                                IconButton(onClick = { importUrlInput = "" }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Clear text")
+                                }
+                            }
+                        },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth().testTag("repo_import_input")
                     )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    if (parsedImport != null) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = "Project: ${parsedImport.fullName}",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    Text(
+                                        text = parsedImport.httpsUrl,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                    )
+                                }
+                            }
+                        }
+                    } else if (importUrlInput.trim().isNotEmpty()) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ErrorOutline,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Invalid link format. Enter link like https://github.com/msi-dev/Music.git",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(
+                        onClick = { importUrlInput = "https://github.com/msi-dev/Music.git" },
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Text(
+                            text = "Fill example: https://github.com/msi-dev/Music.git",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        val url = importUrlInput.trim()
-                        if (url.startsWith("http://") || url.startsWith("https://")) {
+                        val parsed = GitHubUrlParser.parse(importUrlInput)
+                        if (parsed != null) {
                             showImportDialog = false
-                            repoViewModel.importExternalRepo(url, context) { success, msg ->
+                            repoViewModel.importExternalRepo(importUrlInput, context) { success, msg ->
                                 InAppToastManager.showToast(msg, isError = !success)
                             }
                         } else {
-                            InAppToastManager.showToast("Please enter valid clone http link.", isError = true)
+                            InAppToastManager.showToast(
+                                "Invalid GitHub repository link. Example: https://github.com/msi-dev/Music.git",
+                                isError = true
+                            )
                         }
                     },
+                    enabled = parsedImport != null,
                     modifier = Modifier.testTag("repo_import_confirm_btn")
                 ) {
-                    Text("Import")
+                    Text("Import Repository")
                 }
             },
             dismissButton = {
@@ -822,7 +1020,7 @@ fun MainScreen(
                     Text("Cancel")
                 }
             },
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(20.dp)
         )
     }
 

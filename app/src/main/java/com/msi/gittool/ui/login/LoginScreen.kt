@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Visibility
@@ -35,7 +36,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.msi.gittool.R
+import com.msi.gittool.analytics.OAuthCrashReporter
 import com.msi.gittool.ui.components.LoadingAnimation
+import com.msi.gittool.ui.components.OAuthCrashLogViewerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,8 +50,10 @@ fun LoginScreen(
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
     val uiState by viewModel.uiState.collectAsState()
+    val failureLogs by OAuthCrashReporter.failureLogs.collectAsState()
     var obscureToken by remember { mutableStateOf(true) }
     var showPatDialog by remember { mutableStateOf(false) }
+    var showOAuthLogsDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.isLoginSuccess) {
         if (uiState.isLoginSuccess) {
@@ -235,6 +240,56 @@ fun LoginScreen(
                             )
                         }
                     }
+
+                    // OAuth Error Banner & Diagnostics Link
+                    if (!uiState.errorMessage.isNullOrEmpty() || failureLogs.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                if (!uiState.errorMessage.isNullOrEmpty()) {
+                                    Text(
+                                        text = uiState.errorMessage ?: "",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                                if (failureLogs.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    TextButton(
+                                        onClick = { showOAuthLogsDialog = true },
+                                        contentPadding = PaddingValues(0.dp),
+                                        modifier = Modifier.testTag("view_oauth_crash_logs_btn")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.BugReport,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "View OAuth Redirection Crash Logs (${failureLogs.size})",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Modal sheet for viewing OAuth crash reports
+                if (showOAuthLogsDialog) {
+                    OAuthCrashLogViewerDialog(
+                        onDismissRequest = { showOAuthLogsDialog = false }
+                    )
                 }
 
                 // Native Material 3 Modal Bottom Sheet for Personal Access Token Entry

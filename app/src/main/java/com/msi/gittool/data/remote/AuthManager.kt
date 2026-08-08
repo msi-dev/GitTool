@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import com.msi.gittool.analytics.OAuthCrashReporter
 import com.msi.gittool.data.local.TokenManager
 import com.squareup.moshi.Moshi
 import kotlinx.coroutines.CoroutineScope
@@ -62,6 +63,13 @@ class AuthManager(
             val authIntent = authService.getAuthorizationRequestIntent(authRequest)
             activity.startActivityForResult(authIntent, RC_AUTH)
         } catch (e: Exception) {
+            OAuthCrashReporter.reportOAuthFailure(
+                stage = "LAUNCH_APPAUTH_INTENT",
+                errorType = "INTENT_LAUNCH_EXCEPTION",
+                errorMessage = e.message ?: "AppAuth launch intent failed",
+                throwable = e,
+                extraKeys = mapOf("clientId" to clientId, "redirectUri" to redirectUri)
+            )
             try {
                 val authUrl = Uri.parse(GitHubOAuthConfig.AUTH_ENDPOINT).buildUpon()
                     .appendQueryParameter("client_id", clientId)
@@ -71,7 +79,15 @@ class AuthManager(
                 val browserIntent = Intent(Intent.ACTION_VIEW, authUrl)
                 activity.startActivity(browserIntent)
             } catch (ex: Exception) {
-                _oauthStateFlow.value = OAuthState.Error("Failed to launch login: ${ex.message}")
+                val errMsg = "Failed to launch browser intent: ${ex.message}"
+                _oauthStateFlow.value = OAuthState.Error(errMsg)
+                OAuthCrashReporter.reportOAuthFailure(
+                    stage = "LAUNCH_BROWSER_FALLBACK",
+                    errorType = "BROWSER_INTENT_EXCEPTION",
+                    errorMessage = errMsg,
+                    throwable = ex,
+                    extraKeys = mapOf("clientId" to clientId, "redirectUri" to redirectUri)
+                )
             }
         }
     }
@@ -109,14 +125,45 @@ class AuthManager(
             }
 
             if (!error.isNullOrEmpty()) {
-                _oauthStateFlow.value = OAuthState.Error("Authentication Error: $error")
+                val errMsg = "Authentication Error: $error"
+                _oauthStateFlow.value = OAuthState.Error(errMsg)
+                OAuthCrashReporter.reportOAuthFailure(
+                    stage = "REDIRECT_QUERY_ERROR",
+                    errorType = "OAUTH_REDIRECT_PARAM_ERROR",
+                    errorMessage = errMsg,
+                    uri = dataUri,
+                    extraKeys = mapOf("error_param" to error)
+                )
                 return
             }
         }
 
         if (exception != null) {
-            _oauthStateFlow.value = OAuthState.Error(
-                exception.message ?: "Authorization failed or cancelled"
+            val errMsg = exception.message ?: "Authorization failed or cancelled"
+            _oauthStateFlow.value = OAuthState.Error(errMsg)
+            OAuthCrashReporter.reportOAuthFailure(
+                stage = "APPAUTH_RESPONSE_EXCEPTION",
+                errorType = exception.type.toString() ?: "AUTHORIZATION_EXCEPTION",
+                errorMessage = errMsg,
+                throwable = exception,
+                uri = dataUri,
+                extraKeys = mapOf(
+                    "code" to exception.code.toString(),
+                    "error" to (exception.error ?: "none")
+                )
+            )
+            return
+        }
+
+        // Handle case where custom scheme intent redirect is received but carries no valid parameters
+        if (dataUri != null && dataUri.scheme?.contains("gittool", ignoreCase = true) == true) {
+            val errMsg = "Invalid or missing parameters in OAuth redirect URI"
+            _oauthStateFlow.value = OAuthState.Error(errMsg)
+            OAuthCrashReporter.reportOAuthFailure(
+                stage = "UNRECOGNIZED_REDIRECT_URI",
+                errorType = "MISSING_OAUTH_PARAMS",
+                errorMessage = errMsg,
+                uri = dataUri
             )
         }
     }
@@ -130,7 +177,14 @@ class AuthManager(
             if (data != null) {
                 handleIntent(data)
             } else {
-                _oauthStateFlow.value = OAuthState.Error("No authorization response received")
+                val errMsg = "No authorization response received (user cancelled or window closed)"
+                _oauthStateFlow.value = OAuthState.Error(errMsg)
+                OAuthCrashReporter.reportOAuthFailure(
+                    stage = "OAUTH_RESULT_NULL_DATA",
+                    errorType = "USER_CANCELLED_OR_NULL_DATA",
+                    errorMessage = errMsg,
+                    extraKeys = mapOf("resultCode" to resultCode.toString())
+                )
             }
         }
     }
@@ -154,15 +208,26 @@ class AuthManager(
                 if (!token.isNullOrEmpty()) {
                     _oauthStateFlow.value = OAuthState.Success(token)
                 } else {
-                    _oauthStateFlow.value = OAuthState.Error("Received empty access token from GitHub")
+                    val errMsg = "Received empty access token from GitHub"
+                    _oauthStateFlow.value = OAuthState.Error(errMsg)
+                    OAuthCrashReporter.reportOAuthFailure(
+                        stage = "APPAUTH_TOKEN_EXCHANGE",
+                        errorType = "EMPTY_ACCESS_TOKEN",
+                        errorMessage = errMsg
+                    )
                 }
             } else {
                 val authCode = response.authorizationCode
                 if (!authCode.isNullOrEmpty()) {
                     exchangeCodeDirect(authCode)
                 } else {
-                    _oauthStateFlow.value = OAuthState.Error(
-                        exception?.message ?: "Failed to exchange OAuth code"
+                    val errMsg = exception?.message ?: "Failed to exchange OAuth code"
+                    _oauthStateFlow.value = OAuthState.Error(errMsg)
+                    OAuthCrashReporter.reportOAuthFailure(
+                        stage = "APPAUTH_TOKEN_EXCHANGE",
+                        errorType = "CODE_EXCHANGE_FAILED",
+                        errorMessage = errMsg,
+                        throwable = exception
                     )
                 }
             }
@@ -216,19 +281,40 @@ class AuthManager(
                         val errDesc = (map?.get("error_description") as? String)
                             ?: (map?.get("error") as? String)
                             ?: "No access token returned"
+                        val errMsg = "OAuth error: $errDesc"
                         withContext(Dispatchers.Main) {
-                            _oauthStateFlow.value = OAuthState.Error("OAuth error: $errDesc")
+                            _oauthStateFlow.value = OAuthState.Error(errMsg)
                         }
+                        OAuthCrashReporter.reportOAuthFailure(
+                            stage = "DIRECT_TOKEN_EXCHANGE",
+                            errorType = "GITHUB_API_ERROR",
+                            errorMessage = errMsg,
+                            extraKeys = mapOf("error_description" to errDesc)
+                        )
                     }
                 } else {
+                    val errMsg = "Token exchange failed (HTTP ${response.code})"
                     withContext(Dispatchers.Main) {
-                        _oauthStateFlow.value = OAuthState.Error("Token exchange failed (HTTP ${response.code})")
+                        _oauthStateFlow.value = OAuthState.Error(errMsg)
                     }
+                    OAuthCrashReporter.reportOAuthFailure(
+                        stage = "DIRECT_TOKEN_EXCHANGE",
+                        errorType = "HTTP_RESPONSE_ERROR_${response.code}",
+                        errorMessage = errMsg,
+                        extraKeys = mapOf("httpCode" to response.code.toString())
+                    )
                 }
             } catch (e: Exception) {
+                val errMsg = "Failed to exchange OAuth code: ${e.message}"
                 withContext(Dispatchers.Main) {
-                    _oauthStateFlow.value = OAuthState.Error("Failed to exchange OAuth code: ${e.message}")
+                    _oauthStateFlow.value = OAuthState.Error(errMsg)
                 }
+                OAuthCrashReporter.reportOAuthFailure(
+                    stage = "DIRECT_TOKEN_EXCHANGE_NETWORK",
+                    errorType = "NETWORK_EXCEPTION",
+                    errorMessage = errMsg,
+                    throwable = e
+                )
             }
         }
     }

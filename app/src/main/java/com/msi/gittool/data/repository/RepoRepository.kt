@@ -619,10 +619,130 @@ class RepoRepository(
         }
     }
 
+    suspend fun updateRepoFileContent(
+        owner: String,
+        repo: String,
+        path: String,
+        newContentText: String,
+        commitMessage: String,
+        sha: String? = null,
+        branch: String? = null
+    ): Result<GitHubFileContentResponse> = withContext(Dispatchers.IO) {
+        val base64Encoded = android.util.Base64.encodeToString(
+            newContentText.toByteArray(java.nio.charset.StandardCharsets.UTF_8),
+            android.util.Base64.NO_WRAP
+        )
+
+        if (tokenManager.isMockLogin()) {
+            val mockResponse = com.msi.gittool.data.remote.GitHubFileContentResponse(
+                name = path.substringAfterLast('/'),
+                path = path,
+                sha = sha ?: "mock_sha_${System.currentTimeMillis()}",
+                size = newContentText.toByteArray().size.toLong(),
+                url = "https://api.github.com/repos/$owner/$repo/contents/$path",
+                html_url = "https://github.com/$owner/$repo/blob/main/$path",
+                download_url = "https://raw.githubusercontent.com/$owner/$repo/main/$path",
+                type = "file",
+                content = base64Encoded,
+                encoding = "base64"
+            )
+            val pathId = "$owner/$repo/$path"
+            gitToolDao.insertCachedFile(mockResponse.toCachedFileEntity("$owner/$repo", pathId))
+            logActivity(
+                type = "COMMIT",
+                title = "Committed File Update",
+                message = "Updated $path in $owner/$repo: $commitMessage",
+                details = "File: $path\nCommit Message: $commitMessage",
+                status = "SUCCESS",
+                repoName = "$owner/$repo"
+            )
+            return@withContext Result.success(mockResponse)
+        }
+
+        try {
+            val request = com.msi.gittool.data.remote.UpdateFileRequest(
+                message = commitMessage,
+                content = base64Encoded,
+                sha = sha,
+                branch = branch
+            )
+            val response = apiService.updateRepoFileContent(owner, repo, path, request)
+            val updatedContent = response.content ?: com.msi.gittool.data.remote.GitHubFileContentResponse(
+                name = path.substringAfterLast('/'),
+                path = path,
+                sha = "sha_${System.currentTimeMillis()}",
+                size = newContentText.toByteArray().size.toLong(),
+                url = "https://api.github.com/repos/$owner/$repo/contents/$path",
+                html_url = "https://github.com/$owner/$repo/blob/main/$path",
+                download_url = null,
+                type = "file",
+                content = base64Encoded,
+                encoding = "base64"
+            )
+            val pathId = "$owner/$repo/$path"
+            gitToolDao.insertCachedFile(updatedContent.toCachedFileEntity("$owner/$repo", pathId))
+            logActivity(
+                type = "COMMIT",
+                title = "Committed File Update",
+                message = "Updated $path in $owner/$repo: $commitMessage",
+                details = "File: $path\nCommit Message: $commitMessage",
+                status = "SUCCESS",
+                repoName = "$owner/$repo"
+            )
+            Result.success(updatedContent)
+        } catch (e: Exception) {
+            logActivity(
+                type = "COMMIT",
+                title = "Commit Failed",
+                message = "Failed to update $path: ${e.message}",
+                details = "Error: ${e.message}",
+                status = "FAILED",
+                repoName = "$owner/$repo"
+            )
+            Result.failure(e)
+        }
+    }
+
     // --- Forks & Imports ---
     suspend fun createFork(owner: String, repo: String): Result<GitHubRepo> = withContext(Dispatchers.IO) {
+        if (tokenManager.isMockLogin()) {
+            val username = tokenManager.getUsername() ?: "local_user"
+            val mockFork = GitHubRepo(
+                id = System.currentTimeMillis(),
+                name = repo,
+                full_name = "$username/$repo",
+                private = false,
+                html_url = "https://github.com/$username/$repo",
+                description = "Forked/Imported repository from $owner/$repo",
+                stargazers_count = 1,
+                forks_count = 0,
+                language = "Kotlin",
+                clone_url = "https://github.com/$username/$repo.git",
+                fork = true
+            )
+            val currentJson = tokenManager.getLocalUserReposJson(username)
+            val currentList = if (currentJson.isNullOrEmpty()) mutableListOf() else deserializeLocalUserRepos(currentJson).toMutableList()
+            if (currentList.none { it.name.equals(repo, ignoreCase = true) }) {
+                currentList.add(0, mockFork)
+                saveLocalUserRepos(username, currentList)
+            }
+            logActivity(
+                type = "FORK",
+                title = "Forked Repository",
+                message = "Forked/Imported '$owner/$repo' into your workspace.",
+                details = "Owner: $owner\nRepo: $repo\nURL: ${mockFork.html_url}",
+                status = "SUCCESS",
+                repoName = "$username/$repo"
+            )
+            return@withContext Result.success(mockFork)
+        }
+
         try {
             val res = apiService.createFork(owner, repo)
+            try {
+                gitToolDao.insertCachedRepos(listOf(res.toCachedRepoEntity(isPrivateList = res.private)))
+            } catch (ignored: Exception) {}
+
             logActivity(
                 type = "FORK",
                 title = "Forked Repository",

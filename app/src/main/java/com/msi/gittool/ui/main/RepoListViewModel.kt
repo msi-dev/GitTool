@@ -8,6 +8,7 @@ import com.msi.gittool.data.repository.AuthRepository
 import com.msi.gittool.data.repository.RepoRepository
 import com.msi.gittool.data.remote.GitHubRepo
 import com.msi.gittool.data.remote.GitHubUser
+import com.msi.gittool.util.GitHubUrlParser
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -165,6 +166,19 @@ class RepoListViewModel(
         }
     }
 
+    fun forkRepoByLink(
+        input: String,
+        context: Context,
+        onResult: (Boolean, String) -> Unit
+    ) {
+        val parsed = GitHubUrlParser.parse(input)
+        if (parsed == null) {
+            onResult(false, "Invalid link or repository format. Please enter a link like https://github.com/owner/repo.git or owner/repo")
+            return
+        }
+        forkRepo(parsed.owner, parsed.repoName, context, onResult)
+    }
+
     fun forkRepo(owner: String, repoName: String, context: Context, onResult: (Boolean, String) -> Unit) {
         _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
@@ -172,7 +186,7 @@ class RepoListViewModel(
             com.msi.gittool.util.NotificationHelper.showProgressNotification(
                 context,
                 "Forking Repository",
-                "Creating a fork of $owner/$repoName...",
+                "Locating and forking $owner/$repoName...",
                 -1,
                 100,
                 notificationId
@@ -205,30 +219,43 @@ class RepoListViewModel(
         context: Context, 
         onResult: (Boolean, String) -> Unit
     ) {
+        val parsed = GitHubUrlParser.parse(url)
+        if (parsed == null) {
+            onResult(false, "Invalid GitHub repository link. Example: https://github.com/msi-dev/Music.git")
+            return
+        }
+
         viewModelScope.launch {
-            val cleanUrl = url.trim()
-            if (cleanUrl.contains("github.com")) {
-                val parsed = cleanUrl.substringAfter("github.com/").removeSuffix(".git")
-                val parts = parsed.split("/")
-                if (parts.size >= 2) {
-                    val owner = parts[0]
-                    val repo = parts[1]
-                    val notificationId = 1885
-                    com.msi.gittool.util.NotificationHelper.showProgressNotification(
-                        context,
-                        "Importing Repository",
-                        "Importing $owner/$repo to your repositories...",
-                        -1,
-                        100,
-                        notificationId
-                    )
-                    forkRepo(owner, repo, context) { success, msg ->
-                        onResult(success, msg)
-                    }
-                    return@launch
-                }
+            val owner = parsed.owner
+            val repo = parsed.repoName
+            val notificationId = 1885
+            com.msi.gittool.util.NotificationHelper.showProgressNotification(
+                context,
+                "Importing Repository",
+                "Finding $owner/$repo on GitHub and importing to your account...",
+                -1,
+                100,
+                notificationId
+            )
+            val result = repoRepository.createFork(owner, repo)
+            result.onSuccess { importedRepo ->
+                loadUserAndRepos(context, forceRefresh = true)
+                com.msi.gittool.util.NotificationHelper.showNotification(
+                    context,
+                    "Import Succeeded",
+                    "Imported $owner/$repo as ${importedRepo.full_name}.",
+                    notificationId
+                )
+                onResult(true, "Successfully imported '${importedRepo.full_name}' to your account!")
+            }.onFailure { error ->
+                com.msi.gittool.util.NotificationHelper.showNotification(
+                    context,
+                    "Import Failed",
+                    "Could not import $owner/$repo: ${error.localizedMessage}",
+                    notificationId
+                )
+                onResult(false, error.localizedMessage ?: "Failed to import project.")
             }
-            onResult(false, "Unrecognized or external Git import URLs are current Web beta items. Please support github.com URLs.")
         }
     }
 
