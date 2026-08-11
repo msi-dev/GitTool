@@ -9,6 +9,7 @@ data class GitHubUser(
     val avatar_url: String?,
     val name: String?,
     val html_url: String?,
+    val email: String? = null,
     val bio: String? = null,
     val blog: String? = null,
     val company: String? = null,

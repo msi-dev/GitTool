@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Default Margin and Padding -->
+    <dimen name="margin_extra_small">4dp</dimen>
+    <dimen name="margin_small">8dp</dimen>
+    <dimen name="margin_medium">16dp</dimen>
+    <dimen name="margin_large">24dp</dimen>
+    <dimen name="margin_extra_large">32dp</dimen>
+
+    <!-- Card and Surface Radius -->
+    <dimen name="card_corner_radius">12dp</dimen>
+    <dimen name="surface_corner_radius">16dp</dimen>
+    <dimen name="chip_corner_radius">8dp</dimen>
+
+    <!-- Component Dimensions -->
+    <dimen name="touch_target_min_size">48dp</dimen>
+    <dimen name="button_height">50dp</dimen>
+    <dimen name="icon_size_small">18dp</dimen>
+    <dimen name="icon_size_medium">24dp</dimen>
+    <dimen name="icon_size_large">36dp</dimen>
+    <dimen name="avatar_size_medium">48dp</dimen>
+    <dimen name="avatar_size_large">80dp</dimen>
+</resources>

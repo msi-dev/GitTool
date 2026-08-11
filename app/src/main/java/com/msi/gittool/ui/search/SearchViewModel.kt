@@ -11,6 +11,13 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
+data class ExternalSearchResult(
+    val title: String,
+    val snippet: String,
+    val url: String,
+    val sourceDomain: String
+)
+
 sealed interface SearchUiState {
     data object Idle : SearchUiState
     data object Loading : SearchUiState
@@ -123,6 +130,43 @@ class SearchViewModel(
         viewModelScope.launch {
             repoRepository.toggleBookmark(repo)
         }
+    }
+
+    fun getExternalSearchResults(query: String): List<ExternalSearchResult> {
+        val q = query.trim()
+        if (q.isBlank()) return emptyList()
+        return listOf(
+            ExternalSearchResult(
+                title = "$q - Google Search",
+                snippet = "Find global web results, technical discussions, documentation, and code samples on Google for '$q'.",
+                url = "https://www.google.com/search?q=${android.net.Uri.encode(q)}",
+                sourceDomain = "google.com"
+            ),
+            ExternalSearchResult(
+                title = "$q on GitHub Code & Topics",
+                snippet = "Explore GitHub code repositories, open source projects, issues, and discussions matching '$q'.",
+                url = "https://github.com/search?q=${android.net.Uri.encode(q)}",
+                sourceDomain = "github.com"
+            ),
+            ExternalSearchResult(
+                title = "Stack Overflow: Questions tagged $q",
+                snippet = "Search community answers, error resolutions, code snippets, and debugging solutions for '$q'.",
+                url = "https://stackoverflow.com/search?q=${android.net.Uri.encode(q)}",
+                sourceDomain = "stackoverflow.com"
+            ),
+            ExternalSearchResult(
+                title = "Android Developers Documentation: $q",
+                snippet = "Official Android developer guides, Kotlin API reference, and Jetpack Compose samples for '$q'.",
+                url = "https://developer.android.com/s/results?q=${android.net.Uri.encode(q)}",
+                sourceDomain = "developer.android.com"
+            ),
+            ExternalSearchResult(
+                title = "Maven Central & Artifacts: $q",
+                snippet = "Search Java & Kotlin dependency libraries, Gradle packages, and version artifacts for '$q'.",
+                url = "https://mvnrepository.com/search?q=${android.net.Uri.encode(q)}",
+                sourceDomain = "mvnrepository.com"
+            )
+        )
     }
 
     companion object {

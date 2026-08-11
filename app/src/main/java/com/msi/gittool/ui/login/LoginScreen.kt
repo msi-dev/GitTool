@@ -13,9 +13,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.AlternateEmail
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -53,6 +57,7 @@ fun LoginScreen(
     val failureLogs by OAuthCrashReporter.failureLogs.collectAsState()
     var obscureToken by remember { mutableStateOf(true) }
     var showPatDialog by remember { mutableStateOf(false) }
+    var showUsernameEmailDialog by remember { mutableStateOf(false) }
     var showOAuthLogsDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.isLoginSuccess) {
@@ -125,6 +130,32 @@ fun LoginScreen(
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
 
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Surface(
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Key,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Secured & Synced by Firebase Realtime Vault",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(32.dp))
 
                     // Buttons/options Column
@@ -160,10 +191,46 @@ fun LoginScreen(
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
-                                    text = "Use Personal Access Token",
+                                    text = "API Key / Personal Access Token",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSecondary
+                                )
+                            }
+                        }
+
+                        // Login via Saved Username or Email Button
+                        Button(
+                            onClick = {
+                                viewModel.clearError()
+                                showUsernameEmailDialog = true
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.tertiary
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .testTag("username_email_option_button")
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AlternateEmail,
+                                    contentDescription = "Username or email login icon",
+                                    tint = MaterialTheme.colorScheme.onTertiary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "Login with Username or Email",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onTertiary
                                 )
                             }
                         }
@@ -198,7 +265,7 @@ fun LoginScreen(
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
-                                    text = "Login with GitHub",
+                                    text = "Login with GitHub OAuth",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimary
@@ -312,7 +379,7 @@ fun LoginScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "Personal Access Token",
+                                text = "API Key / Personal Access Token",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
@@ -321,7 +388,7 @@ fun LoginScreen(
                             Spacer(modifier = Modifier.height(8.dp))
 
                             Text(
-                                text = "Please enter your GitHub Personal Access Token (classic or fine-grained) to login.",
+                                text = "Enter your GitHub API Key / Token. You can also enter your email address to permanently register for quick Username/Email login.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
@@ -333,7 +400,7 @@ fun LoginScreen(
                             OutlinedTextField(
                                 value = uiState.tokenInput,
                                 onValueChange = { viewModel.updateTokenInput(it) },
-                                label = { Text("Personal Access Token") },
+                                label = { Text("API Key / Personal Access Token *") },
                                 placeholder = { Text("ghp_...") },
                                 leadingIcon = {
                                     Icon(
@@ -381,24 +448,27 @@ fun LoginScreen(
                                     .testTag("token_input_field")
                             )
 
-                            if (uiState.tokenInput.isNotEmpty()) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End
-                                ) {
-                                    TextButton(
-                                        onClick = { viewModel.updateTokenInput("") }
-                                    ) {
-                                        Text(
-                                            text = "Clear input",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.error
-                                        )
-                                    }
-                                }
-                            } else {
-                                Spacer(modifier = Modifier.height(12.dp))
-                            }
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            OutlinedTextField(
+                                value = uiState.emailInput,
+                                onValueChange = { viewModel.updateEmailInput(it) },
+                                label = { Text("User Email Address (Optional)") },
+                                placeholder = { Text("e.g. user@example.com") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Email,
+                                        contentDescription = "Email address icon"
+                                    )
+                                },
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("pat_email_input_field")
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
 
                             // Dialog error presentation
                             if (!uiState.errorMessage.isNullOrEmpty()) {
@@ -439,6 +509,117 @@ fun LoginScreen(
                                     modifier = Modifier
                                         .weight(1f)
                                         .testTag("token_login_button"),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(vertical = 14.dp)
+                                ) {
+                                    Text("Login")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Native Material 3 Modal Bottom Sheet for Username or Email Login (Vault Retrieval)
+                if (showUsernameEmailDialog) {
+                    ModalBottomSheet(
+                        onDismissRequest = {
+                            showUsernameEmailDialog = false
+                            viewModel.clearError()
+                        },
+                        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp)
+                                .padding(bottom = 24.dp)
+                                .verticalScroll(rememberScrollState()),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Login with Username / Email",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = "Enter your registered GitHub Username or Email address. GitTool will automatically fetch your saved API key from Firebase Vault.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = 8.dp)
+                            )
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            OutlinedTextField(
+                                value = uiState.usernameOrEmailInput,
+                                onValueChange = { viewModel.updateUsernameOrEmailInput(it) },
+                                label = { Text("GitHub Username or Email") },
+                                placeholder = { Text("e.g. octocat or user@example.com") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.AlternateEmail,
+                                        contentDescription = "Username or email input icon"
+                                    )
+                                },
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("username_email_input_field")
+                            )
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // Dialog error presentation
+                            if (!uiState.errorMessage.isNullOrEmpty()) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.errorContainer,
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 16.dp)
+                                ) {
+                                    Text(
+                                        text = uiState.errorMessage ?: "",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                        modifier = Modifier.padding(12.dp)
+                                    )
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        showUsernameEmailDialog = false
+                                        viewModel.clearError()
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(vertical = 14.dp)
+                                ) {
+                                    Text("Cancel")
+                                }
+
+                                Button(
+                                    onClick = { viewModel.loginWithUsernameOrEmail() },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.tertiary,
+                                        contentColor = MaterialTheme.colorScheme.onTertiary
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .testTag("username_email_login_button"),
                                     shape = RoundedCornerShape(12.dp),
                                     contentPadding = PaddingValues(vertical = 14.dp)
                                 ) {

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tablet / SW600dp Overrides for Margins and Component Dimensions -->
+    <dimen name="margin_extra_small">6dp</dimen>
+    <dimen name="margin_small">12dp</dimen>
+    <dimen name="margin_medium">24dp</dimen>
+    <dimen name="margin_large">36dp</dimen>
+    <dimen name="margin_extra_large">48dp</dimen>
+
+    <!-- Card and Surface Radius -->
+    <dimen name="card_corner_radius">16dp</dimen>
+    <dimen name="surface_corner_radius">20dp</dimen>
+    <dimen name="chip_corner_radius">12dp</dimen>
+
+    <!-- Component Dimensions for Large Screens -->
+    <dimen name="touch_target_min_size">56dp</dimen>
+    <dimen name="button_height">56dp</dimen>
+    <dimen name="icon_size_small">20dp</dimen>
+    <dimen name="icon_size_medium">28dp</dimen>
+    <dimen name="icon_size_large">44dp</dimen>
+    <dimen name="avatar_size_medium">64dp</dimen>
+    <dimen name="avatar_size_large">110dp</dimen>
+</resources>

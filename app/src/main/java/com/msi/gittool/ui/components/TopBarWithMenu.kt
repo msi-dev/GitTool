@@ -1,20 +1,15 @@
 package com.msi.gittool.ui.components
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,97 +27,80 @@ import com.msi.gittool.data.remote.GitHubUser
 @Composable
 fun TopBarWithMenu(
     user: GitHubUser?,
-    onLogout: () -> Unit,
-    onThemeSelect: () -> Unit,
+    onLogout: () -> Unit = {},
+    onThemeSelect: () -> Unit = {},
     onProfileClick: () -> Unit,
     onSearchClick: () -> Unit,
     onNotificationsClick: () -> Unit,
-    onSortSelect: () -> Unit,
+    onSettingsClick: () -> Unit,
+    onSortSelect: () -> Unit = {},
     unreadNotificationsCount: Int = 3,
     scrollBehavior: TopAppBarScrollBehavior? = null,
     modifier: Modifier = Modifier
 ) {
-    var showMenu by remember { mutableStateOf(false) }
-
-    CenterAlignedTopAppBar(
+    TopAppBar(
         title = {
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(12.dp),
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
+                    .fillMaxWidth()
                     .clickable(onClick = onProfileClick)
                     .testTag("top_bar_profile_info")
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                // Profile Avatar on Left
+                Surface(
+                    shape = CircleShape,
+                    border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)),
+                    modifier = Modifier.size(38.dp)
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        if (user != null) {
-                            val displayName = if (!user.name.isNullOrBlank()) user.name else user.login
-                            Text(
-                                text = displayName,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = "@${user.login}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        } else {
-                            Text(
-                                text = "GitTool",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                    if (user?.avatar_url != null) {
+                        AsyncImage(
+                            model = user.avatar_url,
+                            contentDescription = "User profile picture",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                        )
+                    } else {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.primaryContainer)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Profile",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
                 }
-            }
-        },
-        navigationIcon = {
-            Surface(
-                shape = CircleShape,
-                border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)),
-                modifier = Modifier
-                    .padding(start = 12.dp)
-                    .size(40.dp)
-            ) {
-                if (user?.avatar_url != null) {
-                    AsyncImage(
-                        model = user.avatar_url,
-                        contentDescription = "User profile picture",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape)
-                            .clickable(onClick = onProfileClick)
-                            .testTag("top_bar_profile_avatar")
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                // Display Name, Username, Title
+                Column(verticalArrangement = Arrangement.Center) {
+                    val displayName = if (user != null) {
+                        if (!user.name.isNullOrBlank()) user.name else user.login
+                    } else "GitTool"
+
+                    Text(
+                        text = displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                } else {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.primaryContainer)
-                            .clickable(onClick = onProfileClick)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Profile",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(20.dp)
+                    if (user != null) {
+                        Text(
+                            text = "@${user.login} • GitTool",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -164,66 +142,18 @@ fun TopBarWithMenu(
                 }
             }
 
-            IconButton(onClick = { showMenu = true }) {
+            IconButton(
+                onClick = onSettingsClick,
+                modifier = Modifier.testTag("top_bar_settings_button")
+            ) {
                 Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = "Overflow settings",
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Settings",
                     tint = MaterialTheme.colorScheme.onSurface
                 )
             }
-
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false },
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Sort Repositories", fontWeight = FontWeight.Medium) },
-                    onClick = {
-                        showMenu = false
-                        onSortSelect()
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.List,
-                            contentDescription = "Sort repositories",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                )
-                HorizontalDivider()
-                DropdownMenuItem(
-                    text = { Text("Theme Settings", fontWeight = FontWeight.Medium) },
-                    onClick = {
-                        showMenu = false
-                        onThemeSelect()
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Palette,
-                            contentDescription = "Theme selection",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                )
-                HorizontalDivider()
-                DropdownMenuItem(
-                    text = { Text("Log Out", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium) },
-                    onClick = {
-                        showMenu = false
-                        onLogout()
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.ExitToApp,
-                            contentDescription = "Log out",
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
-                )
-            }
         },
-        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+        colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.surface,
             scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
@@ -231,4 +161,5 @@ fun TopBarWithMenu(
         modifier = modifier
     )
 }
+
 

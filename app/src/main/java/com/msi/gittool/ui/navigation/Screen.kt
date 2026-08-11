@@ -17,4 +17,5 @@ sealed class Screen(val route: String) {
     data object UserProfile : Screen("userprofile/{username}") {
         fun createRoute(username: String) = "userprofile/$username"
     }
+    data object Settings : Screen("settings")
 }

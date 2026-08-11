@@ -41,6 +41,7 @@ data class FileViewerUiState(
     val searchMatches: List<Int> = emptyList(), // line indices with matches
     val currentSearchIndex: Int = -1,
     val wrapText: Boolean = false,
+    val showLineNumbers: Boolean = true,
     val fontSizeSp: Float = 13f,
     val showLineJumpDialog: Boolean = false,
     val lineJumpTarget: String = "",
@@ -226,6 +227,10 @@ class FileViewerViewModel(
 
     fun toggleWrapText() {
         _uiState.update { it.copy(wrapText = !it.wrapText) }
+    }
+
+    fun toggleShowLineNumbers() {
+        _uiState.update { it.copy(showLineNumbers = !it.showLineNumbers) }
     }
 
     fun increaseFontSize() {

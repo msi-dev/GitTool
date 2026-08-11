@@ -176,6 +176,14 @@ fun FileViewerScreen(
                                 leadingIcon = { Icon(Icons.Default.WrapText, contentDescription = null) }
                             )
                             DropdownMenuItem(
+                                text = { Text(if (uiState.showLineNumbers) "Hide Line Numbers" else "Show Line Numbers") },
+                                onClick = {
+                                    showMenu = false
+                                    viewModel.toggleShowLineNumbers()
+                                },
+                                leadingIcon = { Icon(Icons.Default.Numbers, contentDescription = null) }
+                            )
+                            DropdownMenuItem(
                                 text = { Text("Go to Line Number...") },
                                 onClick = {
                                     showMenu = false
@@ -511,6 +519,7 @@ fun CodeTextViewerSection(
     context: Context
 ) {
     val listState = rememberLazyListState()
+    val isDarkTheme = androidx.compose.foundation.isSystemInDarkTheme()
 
     // Handle smooth scrolling when targetScrollLine is requested
     LaunchedEffect(uiState.targetScrollLine) {
@@ -523,7 +532,33 @@ fun CodeTextViewerSection(
 
     if (uiState.isEditMode) {
         // Editable Code View
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface)
+        ) {
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Editing Mode • ${uiState.syntaxLanguage.uppercase()}",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "${uiState.totalLines} lines",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             OutlinedTextField(
                 value = uiState.editableContent,
                 onValueChange = { viewModel.updateCodeContent(it, context) },
@@ -532,70 +567,231 @@ fun CodeTextViewerSection(
                     .padding(8.dp),
                 textStyle = TextStyle(
                     fontFamily = FontFamily.Monospace,
-                    fontSize = uiState.fontSizeSp.sp
+                    fontSize = uiState.fontSizeSp.sp,
+                    lineHeight = (uiState.fontSizeSp * 1.35f).sp
                 )
             )
         }
     } else {
-        // Read-only formatted line view
+        // Plain Code / Text Viewer
         val lines = remember(uiState.editableContent) { uiState.editableContent.lines() }
+        val horizontalScrollState = rememberScrollState()
 
-        Box(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface)
+        ) {
+            // Document Control & Info Header
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                itemsIndexed(lines) { index, lineText ->
-                    val isMatched = uiState.searchMatches.contains(index)
-                    val isCurrentMatch = uiState.currentSearchIndex >= 0 &&
-                            uiState.searchMatches.getOrNull(uiState.currentSearchIndex) == index
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                when {
-                                    isCurrentMatch -> MaterialTheme.colorScheme.primaryContainer
-                                    isMatched -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-                                    index % 2 == 1 -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                                    else -> Color.Transparent
-                                }
-                            )
-                            .padding(vertical = 2.dp)
-                    ) {
-                        // Line Number Gutter
-                        Text(
-                            text = "${index + 1}",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = (uiState.fontSizeSp * 0.85f).sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                            textAlign = TextAlign.End,
-                            modifier = Modifier
-                                .width(44.dp)
-                                .padding(end = 8.dp)
-                        )
-
-                        // Line Code Text
-                        if (uiState.wrapText) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
                             Text(
-                                text = lineText,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = uiState.fontSizeSp.sp,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.weight(1f)
+                                text = uiState.syntaxLanguage.uppercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
-                        } else {
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "${lines.size} lines • ${formatFileSize(uiState.fileSize)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = { viewModel.toggleShowLineNumbers() },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Numbers,
+                                contentDescription = "Toggle Line Numbers",
+                                tint = if (uiState.showLineNumbers) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
+                        IconButton(
+                            onClick = { viewModel.toggleWrapText() },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.WrapText,
+                                contentDescription = "Toggle Word Wrap",
+                                tint = if (uiState.wrapText) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+            // Plain continuous code canvas
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .weight(1f)
+            ) {
+                val lineGutterWidth = when {
+                    lines.size >= 10000 -> 56.dp
+                    lines.size >= 1000 -> 48.dp
+                    lines.size >= 100 -> 40.dp
+                    else -> 32.dp
+                }
+
+                if (uiState.wrapText) {
+                    // Wrapped Text Layout
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(vertical = 4.dp)
+                    ) {
+                        itemsIndexed(lines) { index, lineText ->
+                            val isMatched = uiState.searchMatches.contains(index)
+                            val isCurrentMatch = uiState.currentSearchIndex >= 0 &&
+                                    uiState.searchMatches.getOrNull(uiState.currentSearchIndex) == index
+
+                            val highlightedText = remember(lineText, uiState.syntaxLanguage, isDarkTheme) {
+                                CodeSyntaxHighlighter.highlightLine(
+                                    line = lineText,
+                                    language = uiState.syntaxLanguage,
+                                    isDarkTheme = isDarkTheme
+                                )
+                            }
+
                             Row(
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .horizontalScroll(rememberScrollState())
+                                    .fillMaxWidth()
+                                    .background(
+                                        when {
+                                            isCurrentMatch -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                                            isMatched -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+                                            else -> Color.Transparent
+                                        }
+                                    )
                             ) {
+                                if (uiState.showLineNumbers) {
+                                    Text(
+                                        text = "${index + 1}",
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = (uiState.fontSizeSp * 0.85f).sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                        textAlign = TextAlign.End,
+                                        modifier = Modifier
+                                            .width(lineGutterWidth)
+                                            .padding(end = 8.dp)
+                                    )
+                                }
                                 Text(
-                                    text = lineText,
+                                    text = highlightedText,
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = uiState.fontSizeSp.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    lineHeight = (uiState.fontSizeSp * 1.35f).sp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(end = 8.dp)
                                 )
+                            }
+                        }
+                    }
+                } else {
+                    // Non-wrapped horizontal scrolling document view
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        // Fixed Left Gutter for Line Numbers if enabled
+                        if (uiState.showLineNumbers) {
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier
+                                    .width(lineGutterWidth)
+                                    .fillMaxHeight()
+                                    .background(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f))
+                                    .padding(vertical = 4.dp)
+                            ) {
+                                itemsIndexed(lines) { index, _ ->
+                                    val isCurrentMatch = uiState.currentSearchIndex >= 0 &&
+                                            uiState.searchMatches.getOrNull(uiState.currentSearchIndex) == index
+
+                                    Text(
+                                        text = "${index + 1}",
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = (uiState.fontSizeSp * 0.85f).sp,
+                                        color = if (isCurrentMatch) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                        fontWeight = if (isCurrentMatch) FontWeight.Bold else FontWeight.Normal,
+                                        textAlign = TextAlign.End,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(end = 6.dp)
+                                    )
+                                }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .width(1.dp)
+                                    .fillMaxHeight()
+                                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                            )
+                        }
+
+                        // Code Body Canvas with Unified Horizontal Scroll
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .horizontalScroll(horizontalScrollState)
+                        ) {
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .padding(vertical = 4.dp, horizontal = 8.dp)
+                            ) {
+                                itemsIndexed(lines) { index, lineText ->
+                                    val isMatched = uiState.searchMatches.contains(index)
+                                    val isCurrentMatch = uiState.currentSearchIndex >= 0 &&
+                                            uiState.searchMatches.getOrNull(uiState.currentSearchIndex) == index
+
+                                    val highlightedText = remember(lineText, uiState.syntaxLanguage, isDarkTheme) {
+                                        CodeSyntaxHighlighter.highlightLine(
+                                            line = lineText,
+                                            language = uiState.syntaxLanguage,
+                                            isDarkTheme = isDarkTheme
+                                        )
+                                    }
+
+                                    Text(
+                                        text = highlightedText,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = uiState.fontSizeSp.sp,
+                                        lineHeight = (uiState.fontSizeSp * 1.35f).sp,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.background(
+                                            when {
+                                                isCurrentMatch -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                                                isMatched -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+                                                else -> Color.Transparent
+                                            }
+                                        )
+                                    )
+                                }
                             }
                         }
                     }

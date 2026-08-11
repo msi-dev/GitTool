@@ -14,6 +14,8 @@ import kotlinx.coroutines.launch
 
 data class LoginUiState(
     val tokenInput: String = "",
+    val emailInput: String = "",
+    val usernameOrEmailInput: String = "",
     val rememberMe: Boolean = true,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
@@ -55,6 +57,14 @@ class LoginViewModel(
         _uiState.update { it.copy(tokenInput = token, errorMessage = null) }
     }
 
+    fun updateEmailInput(email: String) {
+        _uiState.update { it.copy(emailInput = email, errorMessage = null) }
+    }
+
+    fun updateUsernameOrEmailInput(input: String) {
+        _uiState.update { it.copy(usernameOrEmailInput = input, errorMessage = null) }
+    }
+
     fun updateRememberMe(remember: Boolean) {
         _uiState.update { it.copy(rememberMe = remember) }
     }
@@ -72,7 +82,12 @@ class LoginViewModel(
 
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
-            val result = authRepository.loginWithToken(token, _uiState.value.rememberMe)
+            val result = authRepository.loginWithToken(
+                token = token,
+                userEmail = _uiState.value.emailInput.trim().ifEmpty { null },
+                rememberMe = _uiState.value.rememberMe,
+                authType = com.msi.gittool.data.local.AuthType.PAT
+            )
             result.onSuccess {
                 _uiState.update { it.copy(isLoading = false, isLoginSuccess = true) }
             }.onFailure { error ->
@@ -81,10 +96,35 @@ class LoginViewModel(
         }
     }
 
+    fun loginWithUsernameOrEmail() {
+        val query = _uiState.value.usernameOrEmailInput.trim()
+        if (query.isEmpty()) {
+            _uiState.update { it.copy(errorMessage = "Please enter your GitHub Username or Email address") }
+            return
+        }
+
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+        viewModelScope.launch {
+            val result = authRepository.loginWithUsernameOrEmail(
+                usernameOrEmail = query,
+                rememberMe = _uiState.value.rememberMe
+            )
+            result.onSuccess {
+                _uiState.update { it.copy(isLoading = false, isLoginSuccess = true) }
+            }.onFailure { error ->
+                _uiState.update { it.copy(isLoading = false, errorMessage = error.message ?: "Vault login failed") }
+            }
+        }
+    }
+
     private fun loginWithOAuthToken(token: String) {
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
-            val result = authRepository.loginWithToken(token, _uiState.value.rememberMe)
+            val result = authRepository.loginWithToken(
+                token = token,
+                rememberMe = _uiState.value.rememberMe,
+                authType = com.msi.gittool.data.local.AuthType.OAUTH
+            )
             result.onSuccess {
                 _uiState.update { it.copy(isLoading = false, isLoginSuccess = true) }
             }.onFailure { error ->

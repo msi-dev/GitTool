@@ -1,3 +1,112 @@
 <resources>
     <string name="app_name">GitTool</string>
+    <string name="app_description">Mobile Git Repository Manager &amp; File Explorer</string>
+
+    <!-- Navigation & Bottom Tabs -->
+    <string name="nav_repositories">Repositories</string>
+    <string name="nav_search">Search</string>
+    <string name="nav_notifications">Notifications</string>
+    <string name="nav_profile">Profile</string>
+
+    <!-- Login & Authentication -->
+    <string name="login_title">Welcome to GitTool</string>
+    <string name="login_subtitle">Sign in with GitHub Personal Access Token or OAuth to access your repositories</string>
+    <string name="login_token_label">Personal Access Token (PAT)</string>
+    <string name="login_token_hint">ghp_xxxxxxxxxxxxxxxxxxxx</string>
+    <string name="login_button">Sign In with Token</string>
+    <string name="login_oauth_button">Sign In with GitHub OAuth</string>
+    <string name="login_guest_button">Continue as Guest</string>
+    <string name="login_error_empty_token">Please enter a valid Personal Access Token</string>
+
+    <!-- Search & Repositories -->
+    <string name="search_placeholder">Search repositories, files, or users...</string>
+    <string name="search_repos">Repositories</string>
+    <string name="search_users">Users</string>
+    <string name="search_no_results">No results found for your query</string>
+    <string name="search_recent">Recent Searches</string>
+    <string name="repo_files">Files</string>
+    <string name="repo_branches">Branches</string>
+    <string name="repo_stars">Stars</string>
+    <string name="repo_forks">Forks</string>
+    <string name="repo_watchers">Watchers</string>
+    <string name="repo_updated">Updated</string>
+
+    <!-- File Viewer & Code Editor -->
+    <string name="file_viewer_title">File Viewer</string>
+    <string name="commit_changes">Commit Changes</string>
+    <string name="commit_message_label">Commit Message</string>
+    <string name="target_branch_label">Target Branch</string>
+    <string name="jump_to_line">Jump to Line</string>
+
+    <!-- Menu Options & File Tools -->
+    <string name="open_external">Open in External App</string>
+    <string name="copy_file_link">Copy File Link</string>
+    <string name="copy_file_contents">Copy File Contents</string>
+    <string name="download_to_device">Download to Device</string>
+    <string name="disable_word_wrap">Disable Word Wrap</string>
+    <string name="enable_word_wrap">Enable Word Wrap</string>
+    <string name="text_size_increase">Text Size +</string>
+    <string name="text_size_decrease">Text Size -</string>
+    <string name="rendered_preview">Rendered Preview</string>
+    <string name="raw_source">Raw Source</string>
+    <string name="data_table_view">Data Table View</string>
+    <string name="raw_csv_tsv">Raw CSV/TSV</string>
+
+    <!-- Upload & Commits -->
+    <string name="upload_file">Upload File</string>
+    <string name="upload_title">Upload File to Repository</string>
+    <string name="upload_commit_msg">Commit Message</string>
+    <string name="upload_select_branch">Select Target Branch</string>
+    <string name="upload_button">Commit &amp; Upload</string>
+    <string name="upload_in_progress">Uploading file to GitHub...</string>
+
+    <!-- Notifications -->
+    <string name="notifications_title">Notifications</string>
+    <string name="notifications_empty">No new notifications</string>
+    <string name="mark_all_read">Mark All as Read</string>
+
+    <!-- Profile & Settings -->
+    <string name="profile_title">User Profile</string>
+    <string name="profile_public_repos">Public Repositories</string>
+    <string name="profile_followers">Followers</string>
+    <string name="profile_following">Following</string>
+    <string name="theme_light">Light Theme</string>
+    <string name="theme_dark">Dark Theme</string>
+    <string name="theme_system">System Default</string>
+    <string name="logout_button">Sign Out</string>
+
+    <!-- Settings & Credentials Manager -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_credentials_manager">Credentials Manager</string>
+    <string name="settings_active_account">Active Account</string>
+    <string name="settings_login_status">Authentication Status</string>
+    <string name="settings_login_pat">Personal Access Token (API)</string>
+    <string name="settings_login_oauth">GitHub OAuth</string>
+    <string name="settings_login_guest">Guest / Local Mode</string>
+    <string name="settings_token_info">Token Information</string>
+    <string name="settings_accounts_title">Account Switcher</string>
+    <string name="settings_add_account">Add Account</string>
+    <string name="settings_switch_account">Switch Account</string>
+    <string name="settings_remove_account">Remove Account</string>
+    <string name="settings_status_active">Active</string>
+    <string name="settings_status_inactive">Inactive</string>
+    <string name="settings_appearance">Appearance &amp; Theme</string>
+    <string name="settings_repo_sort">Repository Sort Order</string>
+    <string name="settings_notifications">Notifications &amp; Alerts</string>
+    <string name="settings_app_info">About &amp; App Info</string>
+    <string name="settings_clear_cache">Clear Local Cache</string>
+    <string name="settings_cache_cleared">Local cache cleared successfully</string>
+
+    <!-- Common Dialog & Button Actions -->
+    <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
+    <string name="action_retry">Retry Reload</string>
+    <string name="action_close">Close</string>
+    <string name="action_search">Search</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_confirm">Confirm</string>
+    <string name="action_go">Go</string>
+    <string name="action_back">Back</string>
+    <string name="status_loading">Loading content...</string>
+    <string name="status_error">An error occurred</string>
 </resources>

@@ -1,5 +1,7 @@
 package com.msi.gittool.ui.search
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -7,8 +9,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -18,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,6 +41,7 @@ fun SearchScreen(
     onUserClick: (username: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val searchQuery by viewModel.searchQuery.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
     val popularRepos by viewModel.popularRepos.collectAsState()
@@ -43,7 +49,7 @@ fun SearchScreen(
     val recentSearches by viewModel.recentSearches.collectAsState()
 
     var selectedTabIndex by remember { mutableStateOf(0) }
-    val tabs = listOf("Repositories", "Users")
+    val tabs = listOf("Repositories", "Users", "External")
 
     Scaffold(
         topBar = {
@@ -224,86 +230,201 @@ fun SearchScreen(
                         // Managed by query check above
                     }
                     is SearchUiState.Success -> {
-                        if (selectedTabIndex == 0) {
-                            // Repositories List
-                            if (state.repos.isEmpty() && state.ownRepos.isEmpty()) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text("No matching repositories found.")
+                        when (selectedTabIndex) {
+                            0 -> {
+                                // Repositories List
+                                if (state.repos.isEmpty() && state.ownRepos.isEmpty()) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(32.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Search,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(48.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            text = "No GitHub repositories found",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = "No GitHub repositories matched '$searchQuery'. Search external web engine results instead.",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(modifier = Modifier.height(24.dp))
+                                        Button(
+                                            onClick = { selectedTabIndex = 2 },
+                                            shape = RoundedCornerShape(12.dp),
+                                            modifier = Modifier.testTag("goto_external_button")
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Language,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("GOTO EXTERNAL", fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                } else {
+                                    LazyColumn(
+                                        contentPadding = PaddingValues(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        if (state.ownRepos.isNotEmpty()) {
+                                            item {
+                                                Text(
+                                                    text = "Own Repositories",
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.padding(bottom = 8.dp)
+                                                )
+                                            }
+                                            items(state.ownRepos) { repo ->
+                                                SearchRepoCard(
+                                                    repo = repo,
+                                                    onRepoClick = { onRepoClick(repo.full_name.split("/")[0], repo.name) },
+                                                    onToggleBookmark = { viewModel.toggleBookmark(repo) }
+                                                )
+                                            }
+                                        }
+
+                                        if (state.repos.isNotEmpty()) {
+                                            item {
+                                                Text(
+                                                    text = "Public Search Directories",
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.secondary,
+                                                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                                                )
+                                            }
+                                            items(state.repos) { repo ->
+                                                SearchRepoCard(
+                                                    repo = repo,
+                                                    onRepoClick = { onRepoClick(repo.full_name.split("/")[0], repo.name) },
+                                                    onToggleBookmark = { viewModel.toggleBookmark(repo) }
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
-                            } else {
-                                LazyColumn(
-                                    contentPadding = PaddingValues(16.dp),
-                                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                                    modifier = Modifier.fillMaxSize()
-                                ) {
-                                    if (state.ownRepos.isNotEmpty()) {
+                            }
+                            1 -> {
+                                // Users List
+                                if (state.users.isEmpty()) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(32.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Search,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(48.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            text = "No matching GitHub users found",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = "Try searching Google & external sources for '$searchQuery'.",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(modifier = Modifier.height(24.dp))
+                                        Button(
+                                            onClick = { selectedTabIndex = 2 },
+                                            shape = RoundedCornerShape(12.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Language,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("GOTO EXTERNAL", fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                } else {
+                                    LazyColumn(
+                                        contentPadding = PaddingValues(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
                                         item {
                                             Text(
-                                                text = "Own Repositories",
+                                                text = "GitHub Users Profiles",
                                                 style = MaterialTheme.typography.titleMedium,
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.primary,
                                                 modifier = Modifier.padding(bottom = 8.dp)
                                             )
                                         }
-                                        items(state.ownRepos) { repo ->
-                                            SearchRepoCard(
-                                                repo = repo,
-                                                onRepoClick = { onRepoClick(repo.full_name.split("/")[0], repo.name) },
-                                                onToggleBookmark = { viewModel.toggleBookmark(repo) }
-                                            )
-                                        }
-                                    }
-
-                                    if (state.repos.isNotEmpty()) {
-                                        item {
-                                            Text(
-                                                text = "Public Search Directories",
-                                                style = MaterialTheme.typography.titleMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.secondary,
-                                                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-                                            )
-                                        }
-                                        items(state.repos) { repo ->
-                                            SearchRepoCard(
-                                                repo = repo,
-                                                onRepoClick = { onRepoClick(repo.full_name.split("/")[0], repo.name) },
-                                                onToggleBookmark = { viewModel.toggleBookmark(repo) }
-                                            )
+                                        items(state.users) { user ->
+                                            SearchUserCard(user = user, onUserClick = { onUserClick(user.login) })
                                         }
                                     }
                                 }
                             }
-                        } else {
-                            // Users List
-                            if (state.users.isEmpty()) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text("No matching users found.")
+                            else -> {
+                                // External Tab (Google Search & Web Engine data)
+                                val externalResults = remember(searchQuery) {
+                                    viewModel.getExternalSearchResults(searchQuery)
                                 }
-                            } else {
                                 LazyColumn(
                                     contentPadding = PaddingValues(16.dp),
-                                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
                                     modifier = Modifier.fillMaxSize()
                                 ) {
                                     item {
-                                        Text(
-                                            text = "GitHub Users Profiles",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary,
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
                                             modifier = Modifier.padding(bottom = 8.dp)
-                                        )
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Language,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "Google & External Web Search Results",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
                                     }
-                                    items(state.users) { user ->
-                                        SearchUserCard(user = user, onUserClick = { onUserClick(user.login) })
+                                    items(externalResults) { item ->
+                                        ExternalSearchResultCard(
+                                            item = item,
+                                            onClick = {
+                                                try {
+                                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(item.url))
+                                                    context.startActivity(intent)
+                                                } catch (e: Exception) {
+                                                    // Browser fallback
+                                                }
+                                            }
+                                        )
                                     }
                                 }
                             }
@@ -430,6 +551,70 @@ fun SearchUserCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun ExternalSearchResultCard(
+    item: ExternalSearchResult,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+        ),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        text = item.sourceDomain,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = item.snippet,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                contentDescription = "Open in browser",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }

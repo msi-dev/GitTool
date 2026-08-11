@@ -167,8 +167,29 @@ fun NavGraph(
                 onNotificationsClick = {
                     navController.navigate(Screen.Notifications.route)
                 },
+                onSettingsClick = {
+                    navController.navigate(Screen.Settings.route)
+                },
                 onRepoClick = { owner, repo ->
                     navController.navigate(Screen.FileBrowser.createRoute(owner, repo))
+                }
+            )
+        }
+
+        // SETTINGS SCREEN
+        composable(Screen.Settings.route) {
+            val settingsViewModel: com.msi.gittool.ui.settings.SettingsViewModel = viewModel(
+                factory = com.msi.gittool.ui.settings.SettingsViewModel.Factory(
+                    authRepository = container.authRepository,
+                    repoRepository = container.repoRepository,
+                    tokenManager = container.tokenManager
+                )
+            )
+            com.msi.gittool.ui.settings.SettingsScreen(
+                viewModel = settingsViewModel,
+                onBackClick = { navController.popBackStack() },
+                onAddAccountNavigate = {
+                    navController.navigate(Screen.Login.route)
                 }
             )
         }

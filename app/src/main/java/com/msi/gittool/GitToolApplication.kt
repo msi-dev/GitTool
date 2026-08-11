@@ -23,8 +23,9 @@ class GitToolApplication : Application() {
         try {
             container = DefaultAppContainer(this)
             OAuthCrashReporter.initialize(container.repoRepository)
+            com.msi.gittool.data.firebase.FirebaseCredentialManager.initialize(this)
         } catch (e: Throwable) {
-            Log.e("GitToolApp", "Failed to initialize DefaultAppContainer", e)
+            Log.e("GitToolApp", "Failed to initialize DefaultAppContainer or Firebase", e)
         }
 
         // Run security diagnostics safely on a background thread without interfering with startup health

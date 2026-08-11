@@ -65,6 +65,7 @@ fun MainScreen(
     onLogoutFinished: () -> Unit,
     onSearchClick: () -> Unit,
     onNotificationsClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     onRepoClick: (owner: String, repo: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -143,6 +144,7 @@ fun MainScreen(
                 onProfileClick = { showProfileSheet = true },
                 onSearchClick = onSearchClick,
                 onNotificationsClick = onNotificationsClick,
+                onSettingsClick = onSettingsClick,
                 onSortSelect = { showSortSheet = true },
                 unreadNotificationsCount = unreadCount,
                 scrollBehavior = scrollBehavior
